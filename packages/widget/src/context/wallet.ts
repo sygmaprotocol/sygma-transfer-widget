@@ -59,7 +59,6 @@ export class WalletUpdateEvent extends CustomEvent<WalletContext> {
     super('walletUpdate', { detail: update, composed: true, bubbles: true });
   }
 }
-
 @customElement('sygma-wallet-context-provider')
 export class WalletContextProvider extends BaseComponent {
   //TODO: add properties to allow widget to pass external provider/signers.

@@ -3,7 +3,6 @@ import {
   Config,
   Environment,
   getRoutes,
-  Network,
   RouteType,
   SygmaDomainConfig,
   type Domain,
@@ -11,17 +10,13 @@ import {
   type Route
 } from '@buildwithsygma/core';
 import { BigNumber } from 'ethers';
-import {
-  createFungibleAssetTransfer,
-  TransactionRequest
-} from '@buildwithsygma/evm';
-import { createSubstrateFungibleAssetTransfer } from '@buildwithsygma/substrate';
-import { TransferBuilder } from '../../lib/transfer-builder';
 import { ContextConsumer } from '@lit/context';
-import { walletContext } from '../../context';
-import { substrateProviderContext } from '../../context/wallet';
-import { SubmittableExtrinsic } from '@polkadot/api/types';
-import { SubmittableResult } from '@polkadot/api';
+import { walletContext } from '../context';
+import { substrateProviderContext } from '../context/wallet';
+import { SdkInitializedEvent } from '../interfaces';
+import { TransferElement } from '../interfaces';
+import { parseUnits } from 'ethers/lib/utils';
+import { TokenBalanceController } from './wallet-manager/token-balance';
 
 export class SelectionsController implements ReactiveController {
   config: Config;
@@ -33,7 +28,8 @@ export class SelectionsController implements ReactiveController {
   specifiedTransferAmount?: bigint;
   recipientAddress: string = '';
 
-  transferAmount?: BigNumber;
+  bigAmount?: BigNumber;
+  displayAmount: string = '';
 
   allDomains: Domain[] = [];
   selectableSourceDomains: Domain[];
@@ -41,25 +37,14 @@ export class SelectionsController implements ReactiveController {
   selectableResources: Resource[];
 
   routesStorage: Map<string, Route[]> = new Map();
-  host: ReactiveElement;
+  host: TransferElement;
   walletContext: ContextConsumer<typeof walletContext, ReactiveElement>;
   substrateProviderContext: ContextConsumer<
     typeof substrateProviderContext,
     ReactiveElement
   >;
 
-  errorBuildingTransfer: boolean = false;
-
-  transfer:
-    | Awaited<ReturnType<typeof createFungibleAssetTransfer>>
-    | Awaited<ReturnType<typeof createSubstrateFungibleAssetTransfer>>
-    | null = null;
-
-  approvalTransactions: Array<TransactionRequest> = [];
-  transferTransaction:
-    | TransactionRequest
-    | SubmittableExtrinsic<'promise', SubmittableResult>
-    | null = null;
+  tokenBalanceController: TokenBalanceController;
 
   get sourceDomainConfig(): SygmaDomainConfig | undefined {
     if (this.selectedSource) {
@@ -74,9 +59,10 @@ export class SelectionsController implements ReactiveController {
     this.selectableSourceDomains = this.allDomains;
     this.selectableDestinationDomains = this.allDomains;
     this.host.requestUpdate();
+    this.host.dispatchEvent(new SdkInitializedEvent({ hasInitialized: true }));
   }
 
-  constructor(host: ReactiveElement) {
+  constructor(host: TransferElement) {
     this.config = new Config();
     this.allDomains = [];
     this.selectableSourceDomains = [];
@@ -86,6 +72,7 @@ export class SelectionsController implements ReactiveController {
     this.host = host;
     this.host.addController(this);
 
+    this.tokenBalanceController = new TokenBalanceController(host);
     this.walletContext = new ContextConsumer(host, {
       context: walletContext,
       subscribe: true
@@ -108,7 +95,31 @@ export class SelectionsController implements ReactiveController {
 
   hostConnected(): void {}
 
-  selectSource(domain: Domain): void {
+  handleInputUpdate(params: {
+    source?: Domain;
+    recipientAddress?: string;
+    destination?: Domain;
+    amount?: string;
+    resource?: Resource;
+  }) {
+    if (params.source) {
+      this.selectSource(params.source);
+    } else if (params.recipientAddress) {
+      this.setRecipientAddress(params.recipientAddress);
+    } else if (params.resource) {
+      this.selectResource(params.resource);
+    } else if (params.destination) {
+      this.selectDestination(params.destination);
+    } else if (params.amount || params.amount === '') {
+      this.setAmount(params.amount);
+    }
+
+    this.host.validationController.updateState();
+    this.host.transactionBuilderController.buildTransfer();
+    this.host.requestUpdate();
+  }
+
+  private selectSource(domain: Domain): void {
     if (this.selectedDestination) {
       this.resetResource();
       this.resetRecipientAddress();
@@ -117,10 +128,9 @@ export class SelectionsController implements ReactiveController {
 
     this.selectedSource = domain;
     void this.populateDestinations(domain);
-    void this.tryBuildTransfer();
   }
 
-  selectDestination(domain: Domain): void {
+  private selectDestination(domain: Domain): void {
     if (this.selectedDestination) {
       this.resetResource();
       this.resetRecipientAddress();
@@ -130,24 +140,35 @@ export class SelectionsController implements ReactiveController {
     if (this.selectedSource) {
       this.populateResources(this.selectedSource, domain);
     }
-    this.host.requestUpdate();
-    void this.tryBuildTransfer();
   }
 
-  selectResourceAndAmount(resource: Resource, amount: BigNumber) {
+  private selectResource(resource?: Resource) {
+    if (resource) {
+      this.tokenBalanceController.startBalanceUpdates(
+        resource,
+        this.selectedSource!.type,
+        this.selectedSource?.caipId!
+      );
+    }
     this.selectedResource = resource;
-    this.transferAmount = amount;
-    this.host.requestUpdate();
-    void this.tryBuildTransfer();
   }
 
-  setRecipientAddress = (address: string): void => {
+  private setAmount(amount: string) {
+    if (this.selectedResource && this.selectedResource.decimals) {
+      if (amount === '') {
+        this.bigAmount = BigNumber.from(0);
+      } else {
+        this.bigAmount = parseUnits(amount, this.selectedResource.decimals);
+      }
+    }
+    this.displayAmount = amount;
+  }
+
+  private setRecipientAddress = (address: string): void => {
     this.recipientAddress = address;
-    this.host.requestUpdate();
-    void this.tryBuildTransfer();
   };
 
-  async populateDestinations(source: Domain) {
+  private async populateDestinations(source: Domain) {
     if (!this.routesStorage.has(source.caipId)) {
       this.routesStorage.set(
         source.caipId,
@@ -167,7 +188,7 @@ export class SelectionsController implements ReactiveController {
     this.host.requestUpdate();
   }
 
-  async populateResources(source: Domain, destination: Domain) {
+  private async populateResources(source: Domain, destination: Domain) {
     const routes = this.routesStorage.get(source.caipId);
 
     if (!routes) {
@@ -192,62 +213,13 @@ export class SelectionsController implements ReactiveController {
     this.host.requestUpdate();
   }
 
-  async tryBuildTransfer() {
-    try {
-      if (
-        !this.selectedSource ||
-        !this.selectedDestination ||
-        !this.selectedResource ||
-        !this.transferAmount ||
-        !this.recipientAddress
-      ) {
-        this.transfer = null;
-        return;
-      }
-
-      const sourceType = this.selectedSource.type;
-
-      if (
-        sourceType === Network.EVM &&
-        !this.walletContext.value?.evmWallet?.provider &&
-        !this.walletContext.value?.evmWallet?.address
-      ) {
-        this.transfer = null;
-        return;
-      }
-
-      const provider =
-        sourceType === Network.EVM
-          ? this.walletContext.value!.evmWallet!.provider
-          : this.substrateProviderContext.value?.substrateProviders?.get(
-              this.selectedSource.caipId!
-            )!;
-
-      const builder = new TransferBuilder();
-      const transfer = await builder.build(
-        this.walletContext.value?.evmWallet?.address!,
-        this.environment,
-        this.selectedSource,
-        this.selectedDestination,
-        this.selectedResource,
-        this.transferAmount,
-        this.recipientAddress,
-        provider
-      );
-
-      this.transfer = transfer;
-      if ('getApprovalTransactions' in transfer) {
-        this.approvalTransactions = await transfer.getApprovalTransactions();
-      } else {
-        this.approvalTransactions = [];
-      }
-
-      this.transferTransaction =
-        (await transfer.getTransferTransaction()) as TransactionRequest;
-    } catch (error) {
-      console.error(error);
-      this.transfer = null;
-      this.errorBuildingTransfer = true;
-    }
+  reset() {
+    this.selectedSource = undefined;
+    this.selectedDestination = undefined;
+    this.selectedResource = undefined;
+    this.bigAmount = BigNumber.from(0);
+    this.displayAmount = '';
+    this.recipientAddress = '';
+    this.tokenBalanceController.resetBalance();
   }
 }

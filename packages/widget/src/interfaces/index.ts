@@ -2,6 +2,11 @@ import type { Environment } from '@buildwithsygma/sygma-sdk-core';
 import type { ApiPromise } from '@polkadot/api';
 import type { Signer } from '@polkadot/api/types';
 import type { WalletConnectOptions } from '@web3-onboard/walletconnect/dist/types';
+import { ReactiveElement } from 'lit';
+import { ExecutionController } from '../controllers/execution';
+import { SelectionsController } from '../controllers/selections';
+import { TransactionBuilderController } from '../controllers/transactionBuilder';
+import { ValidationController } from '../controllers/validation';
 
 export type ThemeVariables =
   | 'mainColor'
@@ -17,6 +22,13 @@ export interface Eip1193Provider {
     method: string;
     params?: Array<unknown> | Record<string, unknown>;
   }): Promise<unknown>;
+}
+
+export interface TransferElement extends ReactiveElement {
+  selectionsController: SelectionsController;
+  transactionBuilderController: TransactionBuilderController;
+  executionController: ExecutionController;
+  validationController: ValidationController;
 }
 
 export interface ISygmaProtocolWidget {
