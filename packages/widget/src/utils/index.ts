@@ -2,7 +2,7 @@ import type { HTMLTemplateResult } from 'lit';
 import { html } from 'lit';
 import { decodeAddress, encodeAddress } from '@polkadot/keyring';
 import { hexToU8a, isHex } from '@polkadot/util';
-import { Network } from '@buildwithsygma/sygma-sdk-core';
+import { Network } from '@buildwithsygma/core';
 import { ethers } from 'ethers';
 import {
   baseNetworkIcon,
@@ -96,4 +96,14 @@ export const debounce = <T>(
     }
     timeout = setTimeout(() => cb(args), delay);
   };
+};
+
+export const isValidPolkadotAddress = (address: string) => {
+  try {
+    encodeAddress(isHex(address) ? hexToU8a(address) : decodeAddress(address));
+
+    return true;
+  } catch (error) {
+    return false;
+  }
 };

@@ -1,27 +1,22 @@
-import { FeeHandlerType } from '@buildwithsygma/sygma-sdk-core';
-import type {
-  BaseConfig,
-  EvmFee,
-  Network,
-  Resource
-} from '@buildwithsygma/sygma-sdk-core';
+import { FeeHandlerType } from '@buildwithsygma/core';
+import type { BaseConfig, Network, Resource } from '@buildwithsygma/core';
 import '../../../common/buttons/button';
 import type { HTMLTemplateResult } from 'lit';
 import { html } from 'lit';
 import { when } from 'lit/directives/when.js';
 import { customElement, property } from 'lit/decorators.js';
 import { BigNumber } from 'ethers';
-import type { SubstrateFee } from '@buildwithsygma/sygma-sdk-core/substrate';
 import { tokenBalanceToNumber } from '../../../../utils/token';
 import { BaseComponent } from '../../../common/base-component';
 import { styles } from './styles';
+import { EvmFee } from '@buildwithsygma/evm';
 
 @customElement('sygma-fungible-transfer-detail')
 export class FungibleTransferDetail extends BaseComponent {
   static styles = styles;
 
   @property({ type: Object })
-  fee?: EvmFee | SubstrateFee | null;
+  fee?: EvmFee | null;
 
   @property({ type: Object })
   selectedResource?: Resource;
@@ -80,9 +75,6 @@ export class FungibleTransferDetail extends BaseComponent {
     let _fee = '';
 
     if (decimals) {
-      // * BigNumber.from(fee.toString()) from
-      // * substrate gas
-      // * hex doesn't start with 0x :shrug:
       _fee = tokenBalanceToNumber(BigNumber.from(fee.toString()), decimals, 4);
     }
 

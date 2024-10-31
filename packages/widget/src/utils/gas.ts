@@ -1,8 +1,8 @@
 import { BigNumber, ethers } from 'ethers';
 import type { PopulatedTransaction } from 'ethers';
-import { Web3Provider } from '@ethersproject/providers';
-import type { SubstrateTransaction } from '../controllers/transfers/fungible-token-transfer';
 import type { Eip1193Provider } from '../interfaces';
+import { SubmittableExtrinsic } from '@polkadot/api/types';
+import { SubmittableResult } from '@polkadot/api';
 
 /**
  * This method calculate the amount of gas
@@ -19,7 +19,7 @@ export async function estimateEvmTransactionsGasCost(
   sender: string,
   transactions: PopulatedTransaction[]
 ): Promise<BigNumber> {
-  const provider = new Web3Provider(eip1193Provider, chainId);
+  const provider = new ethers.providers.Web3Provider(eip1193Provider, chainId);
   const signer = provider.getSigner(sender);
 
   let cost = ethers.constants.Zero;
@@ -34,7 +34,7 @@ export async function estimateEvmTransactionsGasCost(
 
 export async function estimateSubstrateGas(
   signerAddress: string,
-  pendingTransferTransaction: SubstrateTransaction
+  pendingTransferTransaction: SubmittableExtrinsic<'promise', SubmittableResult>
 ): Promise<BigNumber> {
   const { partialFee } =
     await pendingTransferTransaction.paymentInfo(signerAddress);

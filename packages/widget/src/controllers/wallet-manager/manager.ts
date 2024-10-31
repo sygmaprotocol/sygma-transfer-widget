@@ -1,5 +1,5 @@
-import type { Domain } from '@buildwithsygma/sygma-sdk-core';
-import { Network } from '@buildwithsygma/sygma-sdk-core';
+import type { Domain } from '@buildwithsygma/core';
+import { Network } from '@buildwithsygma/core';
 import { ContextConsumer } from '@lit/context';
 import type { Account } from '@polkadot-onboard/core';
 import { InjectedWalletProvider } from '@polkadot-onboard/injected-wallets';

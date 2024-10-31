@@ -1,4 +1,4 @@
-import type { Domain } from '@buildwithsygma/sygma-sdk-core';
+import type { Domain } from '@buildwithsygma/core';
 import { consume } from '@lit/context';
 import type { HTMLTemplateResult, PropertyValues, TemplateResult } from 'lit';
 import { html } from 'lit';

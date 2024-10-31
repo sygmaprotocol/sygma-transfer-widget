@@ -1,5 +1,4 @@
 import { Environment } from '@buildwithsygma/sygma-sdk-core';
-import type { ParachainID } from '@buildwithsygma/sygma-sdk-core/substrate';
 
 export const DEFAULT_ETH_DECIMALS = 18;
 
@@ -9,17 +8,18 @@ export const TESTNET_EXPLORER_URL =
 export const CHAIN_ID_URL = 'https://chainid.network/chains.json';
 
 type WsUrl = `ws://${string}` | `wss://${string}`;
+export type CaipId = string;
 export const SUBSTRATE_RPCS: {
-  [env in Environment]: Record<ParachainID, WsUrl>;
+  [env in Environment]: Record<CaipId, WsUrl>;
 } = {
   [Environment.DEVNET]: {},
   [Environment.LOCAL]: {},
   [Environment.TESTNET]: {
-    2004: 'wss://rhala-node.phala.network/ws'
+    '': 'wss://rhala-node.phala.network/ws'
   },
   [Environment.MAINNET]: {
-    2004: 'wss://rpc.helikon.io/khala',
-    2035: 'wss://phala.api.onfinality.io/public-ws'
+    '': 'wss://rpc.helikon.io/khala',
+    '': 'wss://phala.api.onfinality.io/public-ws'
   }
 };
 

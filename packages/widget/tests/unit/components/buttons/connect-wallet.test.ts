@@ -1,5 +1,5 @@
-import type { Domain } from '@buildwithsygma/sygma-sdk-core';
-import { Network } from '@buildwithsygma/sygma-sdk-core';
+import type { Domain } from '@buildwithsygma/core';
+import { Network } from '@buildwithsygma/core';
 import {
   elementUpdated,
   fixture,

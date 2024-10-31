@@ -1,20 +1,16 @@
 import { ERC20__factory } from '@buildwithsygma/sygma-contracts';
 import type {
-  EthereumConfig,
   EvmResource,
   Resource,
-  SubstrateConfig,
   SubstrateResource
 } from '@buildwithsygma/sygma-sdk-core';
-import { ResourceType } from '@buildwithsygma/sygma-sdk-core';
-import { Web3Provider } from '@ethersproject/providers';
+import { ResourceType } from '@buildwithsygma/core';
+import { Network } from '@buildwithsygma/core';
 import { ContextConsumer } from '@lit/context';
 import { ethers, BigNumber } from 'ethers';
 import type { ReactiveController, ReactiveElement } from 'lit';
-import type { ParachainID } from '@buildwithsygma/sygma-sdk-core/substrate';
 import { getAssetBalance } from '@buildwithsygma/sygma-sdk-core/substrate';
 import { walletContext } from '../../context';
-import { isEvmResource } from '../../utils';
 import { substrateProviderContext } from '../../context/wallet';
 import type { SubstrateWallet } from '../../context/wallet';
 
@@ -59,7 +55,8 @@ export class TokenBalanceController implements ReactiveController {
 
   startBalanceUpdates(
     resource: Resource,
-    sourceDomainConfig?: EthereumConfig | SubstrateConfig
+    networkType: Network,
+    caipId: string
   ): void {
     if (this.timeout) {
       clearInterval(this.timeout);
@@ -67,14 +64,14 @@ export class TokenBalanceController implements ReactiveController {
     this.balance = ethers.constants.Zero;
     this.host.requestUpdate();
 
-    if (isEvmResource(resource)) {
+    if (networkType === Network.EVM) {
       if (resource.type === ResourceType.FUNGIBLE) {
         //trigger so we don't wait BALANCE_REFRESH_MS before displaying balance
-        void this.subscribeERC20BalanceUpdate(resource);
+        void this.subscribeERC20BalanceUpdate(resource as EvmResource);
         this.timeout = setInterval(
           this.subscribeERC20BalanceUpdate,
           BALANCE_REFRESH_MS,
-          resource
+          resource as EvmResource
         );
         return;
       }
@@ -88,22 +85,18 @@ export class TokenBalanceController implements ReactiveController {
         );
         return;
       }
-    } else {
-      const config = sourceDomainConfig as SubstrateConfig;
-      if (config.parachainId) {
-        const params = {
-          resource,
-          parachainId: config.parachainId as ParachainID
-        };
-        void this.suscribeSubstrateBalanceUpdate(params);
-        this.timeout = setInterval(
-          this.suscribeSubstrateBalanceUpdate,
-          BALANCE_REFRESH_MS,
-          params
-        );
-        return;
-      }
-      throw new Error('parachainId unavailable');
+    } else if (networkType === Network.SUBSTRATE) {
+      const params = {
+        resource: resource as SubstrateResource,
+        caipId
+      };
+      void this.suscribeSubstrateBalanceUpdate(params);
+      this.timeout = setInterval(
+        this.suscribeSubstrateBalanceUpdate,
+        BALANCE_REFRESH_MS,
+        params
+      );
+      return;
     }
     throw new Error('Unsupported resource');
   }
@@ -120,7 +113,7 @@ export class TokenBalanceController implements ReactiveController {
     const address = this.walletContext.value?.evmWallet?.address;
     if (!provider || !address) return;
 
-    const web3Provider = new Web3Provider(provider);
+    const web3Provider = new ethers.providers.Web3Provider(provider);
     const ierc20 = ERC20__factory.connect(resource.address, web3Provider);
     void async function (this: TokenBalanceController) {
       this.loadingBalance = true;
@@ -137,7 +130,7 @@ export class TokenBalanceController implements ReactiveController {
     const address = this.walletContext.value?.evmWallet?.address;
     if (!provider || !address) return;
 
-    const web3Provider = new Web3Provider(provider);
+    const web3Provider = new ethers.providers.Web3Provider(provider);
     void async function (this: TokenBalanceController) {
       this.loadingBalance = true;
       this.host.requestUpdate();
@@ -151,12 +144,12 @@ export class TokenBalanceController implements ReactiveController {
 
   suscribeSubstrateBalanceUpdate = (params: {
     resource: SubstrateResource;
-    parachainId: ParachainID;
+    caipId: string;
   }): void => {
-    const { resource, parachainId } = params;
+    const { resource, caipId } = params;
 
     const substrateProvider =
-      this.substrateProviderContext.value?.substrateProviders?.get(parachainId);
+      this.substrateProviderContext.value?.substrateProviders?.get(caipId);
     const { signerAddress } = this.walletContext.value
       ?.substrateWallet as SubstrateWallet;
 

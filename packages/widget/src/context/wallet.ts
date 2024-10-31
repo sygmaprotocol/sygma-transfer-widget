@@ -7,10 +7,8 @@ import { Environment } from '@buildwithsygma/sygma-sdk-core';
 import { html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import type { ParachainID } from '@buildwithsygma/sygma-sdk-core/substrate';
 import { BaseComponent } from '../components/common/base-component';
-import { SUBSTRATE_RPCS } from '../constants';
-import { fetchParachainId } from '../utils/substrate';
+import { CaipId, SUBSTRATE_RPCS } from '../constants';
 
 export interface EvmWallet {
   address: string;
@@ -36,7 +34,7 @@ export enum WalletContextKeys {
   SUBSTRATE_WALLET = 'substrateWallet'
 }
 
-export type ParachainProviders = Map<ParachainID, ApiPromise>;
+export type ParachainProviders = Map<CaipId, ApiPromise>;
 
 export interface SubstrateProviderContext {
   substrateProviders?: ParachainProviders;
@@ -61,7 +59,6 @@ export class WalletUpdateEvent extends CustomEvent<WalletContext> {
     super('walletUpdate', { detail: update, composed: true, bubbles: true });
   }
 }
-
 @customElement('sygma-wallet-context-provider')
 export class WalletContextProvider extends BaseComponent {
   //TODO: add properties to allow widget to pass external provider/signers.
@@ -76,23 +73,13 @@ export class WalletContextProvider extends BaseComponent {
   evmWallet?: EvmWallet;
 
   @property({ attribute: false })
-  substrateProviders?: Array<ApiPromise> = [];
+  substrateProviders?: Map<CaipId, ApiPromise> = new Map();
 
   @property({ type: String })
   environment?: Environment;
 
-  async connectedCallback(): Promise<void> {
-    super.connectedCallback();
-    if (this.evmWallet) {
-      this.walletContext.evmWallet = this.evmWallet;
-    }
-
-    const substrateProviders = await this.getSubstrateProviders();
-
-    this.substrateProviderContext = {
-      substrateProviders: substrateProviders
-    };
-
+  constructor() {
+    super();
     this.addEventListener('walletUpdate', (event: WalletUpdateEvent) => {
       this.walletContext = {
         ...this.walletContext,
@@ -109,6 +96,19 @@ export class WalletContextProvider extends BaseComponent {
         );
       }
     });
+  }
+
+  async connectedCallback(): Promise<void> {
+    super.connectedCallback();
+    if (this.evmWallet) {
+      this.walletContext.evmWallet = this.evmWallet;
+    }
+
+    const substrateProviders = await this.getSubstrateProviders();
+
+    this.substrateProviderContext = {
+      substrateProviders: substrateProviders
+    };
   }
 
   disconnectedCallback(): void {
@@ -160,11 +160,10 @@ export class WalletContextProvider extends BaseComponent {
     const environment = this.environment ?? Environment.TESTNET;
 
     // create a id -> api map of all specified providers
-    for (const provider of specifiedProviders) {
+    for (const [id, provider] of specifiedProviders.entries()) {
       try {
-        const parachainId = await fetchParachainId(provider);
-        console.log(`provided provider for ${parachainId}`);
-        substrateProviders.set(parachainId, provider);
+        console.log(`provided provider for ${id}`);
+        substrateProviders.set(id as string, provider);
       } catch (error) {
         console.error('unable to fetch parachain id');
       }
@@ -173,18 +172,16 @@ export class WalletContextProvider extends BaseComponent {
     // all chains hardcoded on ui
     // and create their providers
     // if not already specified by the user
-    const parachainIds = Object.keys(SUBSTRATE_RPCS[environment]);
-    for (const parachainId of parachainIds) {
-      const _parachainId = parseInt(parachainId);
-
-      if (!substrateProviders.has(_parachainId)) {
-        const rpcUrls = SUBSTRATE_RPCS[environment][_parachainId];
+    const caipIds = Object.keys(SUBSTRATE_RPCS[environment]);
+    for (const caipId of caipIds) {
+      if (!substrateProviders.has(caipId)) {
+        const rpcUrls = SUBSTRATE_RPCS[environment][caipId];
         const provider = new WsProvider(rpcUrls);
         const api = new ApiPromise({ provider });
 
         try {
           await api.isReady;
-          substrateProviders.set(_parachainId, api);
+          substrateProviders.set(caipId, api);
         } catch (error) {
           console.error('api error');
         }
