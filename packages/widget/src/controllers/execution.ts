@@ -1,7 +1,9 @@
 import { ReactiveController } from 'lit';
 import { SubstrateTransactionExecutor } from '../lib/substrateTransactionExecutor';
 import { TransferElement } from '../interfaces';
-import { EvmTransactionExecutor } from '../lib/EvmTransactionExecutor';
+import { EvmTransactionExecutor } from '../lib/evmTransactionExecutor';
+import { EvmFee } from '@buildwithsygma/evm';
+import { SubstrateFee } from 'node_modules/@buildwithsygma/substrate/dist-esm/types';
 
 export enum ExeuctionState {
   Executing = 'Executing',
@@ -14,6 +16,8 @@ export enum ExeuctionState {
 export class ExecutionController implements ReactiveController {
   host: TransferElement;
 
+  fee: EvmFee | SubstrateFee | undefined;
+
   state: ExeuctionState;
 
   private executions: Array<
@@ -25,8 +29,12 @@ export class ExecutionController implements ReactiveController {
 
   hostConnected(): void {}
 
-  getNextTransactionTitle(): string {
+  getExecutingTransactionTitle(): string {
     if (this.executing) return this.executing.title;
+    return '';
+  }
+
+  getNextTransactionTitle(): string {
     if (this.executions.length > 0) return this.executions[0].title;
     return '';
   }
@@ -43,9 +51,11 @@ export class ExecutionController implements ReactiveController {
   }
 
   onExecutorsReady(
-    executors: Array<EvmTransactionExecutor | SubstrateTransactionExecutor>
+    executors: Array<EvmTransactionExecutor | SubstrateTransactionExecutor>,
+    fee: EvmFee | SubstrateFee | undefined
   ) {
     this.executions = executors;
+    this.fee = fee;
     this.state = ExeuctionState.Ready;
   }
 
@@ -53,9 +63,9 @@ export class ExecutionController implements ReactiveController {
     const next = this.executions.shift();
     try {
       if (next) {
+        this.executing = next;
         this.state = ExeuctionState.Executing;
         this.host.validationController.updateState();
-        this.executing = next;
         await this.executing.executeTransaction();
         this.state = ExeuctionState.Ready;
         if (this.executions.length === 0) {

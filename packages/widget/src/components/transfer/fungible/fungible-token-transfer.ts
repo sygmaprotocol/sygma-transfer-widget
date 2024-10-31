@@ -183,6 +183,7 @@ export class FungibleTokenTransfer
           .amountToReceive=${BigNumber.from(0)}
           .sourceDomainConfig=${sourceDomainConfig}
           .selectedResource=${selectedResource}
+          .fee=${this.executionController.fee}
         ></sygma-fungible-transfer-detail>
       </section>
       <section>

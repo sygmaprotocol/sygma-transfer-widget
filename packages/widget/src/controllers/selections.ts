@@ -139,6 +139,10 @@ export class SelectionsController implements ReactiveController {
   }
 
   private selectResource(resource?: Resource) {
+    if (this.selectedResource) {
+      this.host.tokenBalanceController.resetBalance();
+    }
+
     if (resource) {
       this.host.tokenBalanceController.startBalanceUpdates(
         resource,
@@ -211,11 +215,11 @@ export class SelectionsController implements ReactiveController {
 
   reset() {
     this.host.tokenBalanceController.resetBalance();
-    this.selectedSource = undefined;
-    this.selectedDestination = undefined;
-    this.selectedResource = undefined;
     this.bigAmount = BigNumber.from(0);
     this.displayAmount = '';
     this.recipientAddress = '';
+    this.selectedDestination = undefined;
+    this.selectedResource = undefined;
+    this.selectedSource = undefined;
   }
 }

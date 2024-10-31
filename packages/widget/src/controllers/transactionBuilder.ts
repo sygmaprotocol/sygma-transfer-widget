@@ -8,12 +8,14 @@ import { ApiPromise, SubmittableResult } from '@polkadot/api';
 import { TransferElement } from '../interfaces';
 import {
   createFungibleAssetTransfer,
+  EvmFee,
   TransactionRequest
 } from '@buildwithsygma/evm';
 import { SubstrateTransactionExecutor } from '../lib/substrateTransactionExecutor';
 import { Signer, SubmittableExtrinsic } from '@polkadot/api/types';
 import { createSubstrateFungibleAssetTransfer } from '@buildwithsygma/substrate';
-import { EvmTransactionExecutor } from '../lib/EvmTransactionExecutor';
+import { EvmTransactionExecutor } from '../lib/evmTransactionExecutor';
+import { SubstrateFee } from 'node_modules/@buildwithsygma/substrate/dist-esm/types';
 
 type EvmFungibleTransfer = Awaited<
   ReturnType<typeof createFungibleAssetTransfer>
@@ -178,7 +180,9 @@ export class TransactionBuilderController implements ReactiveController {
           provider
         });
 
+        let fee: SubstrateFee | EvmFee | undefined;
         if (transfer) {
+          fee = await transfer?.getFee();
           const executors = [];
           if (sourceIsEvm) {
             executors.push(
@@ -199,7 +203,7 @@ export class TransactionBuilderController implements ReactiveController {
             );
           }
 
-          this.host.executionController.onExecutorsReady(executors);
+          this.host.executionController.onExecutorsReady(executors, fee);
           this.status = TransactionBuilderStatus.Built;
           this.host.validationController.updateState();
         }

@@ -3,6 +3,7 @@ import { SelectionsController } from '../controllers/selections';
 import { validateAddress } from '../utils';
 import { WalletContext } from '../context';
 import { Network } from '@buildwithsygma/core';
+import { parseUnits } from 'ethers/lib/utils';
 
 export enum SelectionError {
   SOURCE_MISSING = 'SOURCE_MISSING',
@@ -37,7 +38,8 @@ const ERROR_MESSAGES: Record<SelectionError, string> = {
  */
 export function getSelectionError(
   selectionsController: SelectionsController,
-  walletContext?: WalletContext
+  walletContext?: WalletContext,
+  balance?: BigNumber
 ) {
   const {
     selectedSource,
@@ -57,12 +59,17 @@ export function getSelectionError(
     error = SelectionError.RESOURCE_MISSING;
   } else if (!displayAmount || displayAmount.length === 0) {
     error = SelectionError.AMOUNT_MISSING;
-  } else if (BigNumber.from(displayAmount).lte(0)) {
+  } else if (displayAmount === '') {
     error = SelectionError.ZERO_AMOUNT;
   } else if (!recipientAddress || recipientAddress.length === 0) {
     error = SelectionError.RECIPIENT_ADDRESS_MISSING;
   } else if (validateAddress(recipientAddress, selectedDestination.type)) {
     error = SelectionError.INVALID_RECIPIENT_ADDRESS;
+  } else if (balance && selectedResource && displayAmount) {
+    const bigAmount = parseUnits(displayAmount, selectedResource.decimals!);
+    if (bigAmount.gt(balance)) {
+      error = SelectionError.AMOUNT_EXCEEDS_BALANCE;
+    }
   } else if (selectedSource) {
     const { type } = selectedSource;
     if (type === Network.SUBSTRATE) {
@@ -96,12 +103,13 @@ export function getSelectionError(
  */
 export function validateSelections(
   selectionsController: SelectionsController,
-  walletContext?: WalletContext
+  walletContext?: WalletContext,
+  balance?: BigNumber
 ): {
   message: string | null;
   error: SelectionError | null;
 } {
-  const error = getSelectionError(selectionsController, walletContext);
+  const error = getSelectionError(selectionsController, walletContext, balance);
   if (error) return { message: ERROR_MESSAGES[error], error };
   return { message: null, error: null };
 }

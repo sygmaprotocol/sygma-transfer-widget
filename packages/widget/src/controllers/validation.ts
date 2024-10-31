@@ -38,7 +38,8 @@ export class ValidationController implements ReactiveController {
     const sel = this.host.selectionsController;
     const { error, message } = validateSelections(
       sel,
-      this.walletContext.value
+      this.walletContext.value,
+      this.host.tokenBalanceController.balance
     );
 
     if (error && AMOUNT_ERRORS.includes(error)) {
@@ -82,23 +83,27 @@ export class ValidationController implements ReactiveController {
   }
 
   validateExecutionState(): boolean {
-    let nextTitle = this.host.executionController.getNextTransactionTitle();
+    let nextTitle;
     switch (this.host.executionController.state) {
       case ExeuctionState.Complete:
         this.host.executionController.reset();
         this.host.selectionsController.reset();
         return true;
       case ExeuctionState.Ready:
+        nextTitle = this.host.executionController.getNextTransactionTitle();
         this.transferButtonText = `Execute ${nextTitle}`;
         this.transferButtonLoading = false;
         this.transferButtonDisabled = false;
         return true;
       case ExeuctionState.Failed:
+        nextTitle = this.host.executionController.getNextTransactionTitle();
         this.transferButtonText = `Execution Failed ${nextTitle}`;
         this.transferButtonDisabled = true;
         this.transferButtonLoading = false;
         return false;
       case ExeuctionState.Executing:
+        nextTitle =
+          this.host.executionController.getExecutingTransactionTitle();
         this.transferButtonText = `Executing ${nextTitle}`;
         this.transferButtonLoading = true;
         this.transferButtonDisabled = true;
