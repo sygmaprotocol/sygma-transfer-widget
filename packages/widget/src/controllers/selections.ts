@@ -16,7 +16,6 @@ import { substrateProviderContext } from '../context/wallet';
 import { SdkInitializedEvent } from '../interfaces';
 import { TransferElement } from '../interfaces';
 import { parseUnits } from 'ethers/lib/utils';
-import { TokenBalanceController } from './wallet-manager/token-balance';
 
 export class SelectionsController implements ReactiveController {
   config: Config;
@@ -44,8 +43,6 @@ export class SelectionsController implements ReactiveController {
     ReactiveElement
   >;
 
-  tokenBalanceController: TokenBalanceController;
-
   get sourceDomainConfig(): SygmaDomainConfig | undefined {
     if (this.selectedSource) {
       return this.config.getDomainConfig(this.selectedSource);
@@ -72,7 +69,6 @@ export class SelectionsController implements ReactiveController {
     this.host = host;
     this.host.addController(this);
 
-    this.tokenBalanceController = new TokenBalanceController(host);
     this.walletContext = new ContextConsumer(host, {
       context: walletContext,
       subscribe: true
@@ -144,7 +140,7 @@ export class SelectionsController implements ReactiveController {
 
   private selectResource(resource?: Resource) {
     if (resource) {
-      this.tokenBalanceController.startBalanceUpdates(
+      this.host.tokenBalanceController.startBalanceUpdates(
         resource,
         this.selectedSource!.type,
         this.selectedSource?.caipId!
@@ -214,12 +210,12 @@ export class SelectionsController implements ReactiveController {
   }
 
   reset() {
+    this.host.tokenBalanceController.resetBalance();
     this.selectedSource = undefined;
     this.selectedDestination = undefined;
     this.selectedResource = undefined;
     this.bigAmount = BigNumber.from(0);
     this.displayAmount = '';
     this.recipientAddress = '';
-    this.tokenBalanceController.resetBalance();
   }
 }

@@ -22,6 +22,8 @@ import { TransactionBuilderController } from '../../../controllers/transactionBu
 import { ExecutionController } from '../../../controllers/execution';
 import { BigNumber } from 'ethers';
 import { TransferElement } from '../../../interfaces';
+import { TokenBalanceController } from '../../../controllers/wallet-manager/token-balance';
+
 @customElement('sygma-fungible-transfer')
 export class FungibleTokenTransfer
   extends BaseComponent
@@ -49,6 +51,7 @@ export class FungibleTokenTransfer
   validationController: ValidationController;
   transactionBuilderController: TransactionBuilderController;
   executionController: ExecutionController;
+  tokenBalanceController: TokenBalanceController;
 
   constructor() {
     super();
@@ -57,6 +60,7 @@ export class FungibleTokenTransfer
     this.validationController = new ValidationController(this);
     this.transactionBuilderController = new TransactionBuilderController(this);
     this.executionController = new ExecutionController(this);
+    this.tokenBalanceController = new TokenBalanceController(this);
   }
 
   connectedCallback(): void {
@@ -162,6 +166,7 @@ export class FungibleTokenTransfer
           .onAmountChanged=${onAmountChanged}
           .validationMessage=${this.validationController
             .resourceAmountErrorMessage}
+          .tokenBalance=${this.tokenBalanceController.balance}
         >
         </sygma-resource-amount-selector>
       </section>

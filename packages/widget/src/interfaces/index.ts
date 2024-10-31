@@ -7,6 +7,7 @@ import { ExecutionController } from '../controllers/execution';
 import { SelectionsController } from '../controllers/selections';
 import { TransactionBuilderController } from '../controllers/transactionBuilder';
 import { ValidationController } from '../controllers/validation';
+import { TokenBalanceController } from '../controllers/wallet-manager/token-balance';
 
 export type ThemeVariables =
   | 'mainColor'
@@ -29,6 +30,7 @@ export interface TransferElement extends ReactiveElement {
   transactionBuilderController: TransactionBuilderController;
   executionController: ExecutionController;
   validationController: ValidationController;
+  tokenBalanceController: TokenBalanceController;
 }
 
 export interface ISygmaProtocolWidget {

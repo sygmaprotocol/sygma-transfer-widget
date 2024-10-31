@@ -10,6 +10,8 @@ import type { DropdownOption } from '../common/dropdown/dropdown';
 import { BaseComponent } from '../common/base-component';
 import { styles } from './styles';
 import { EthereumConfig, SubstrateConfig } from '@buildwithsygma/core';
+import { BigNumber } from 'ethers';
+import { tokenBalanceToNumber } from '../../utils/token';
 
 @customElement('sygma-resource-amount-selector')
 export class ResourceAmountSelector extends BaseComponent {
@@ -37,7 +39,7 @@ export class ResourceAmountSelector extends BaseComponent {
   @property() validationMessage: string | null = null;
   @property() amount: string = '';
 
-  @property() tokenBalance: string = '';
+  @property() tokenBalance?: BigNumber;
 
   requestUpdate(
     name?: PropertyKey,
@@ -48,12 +50,22 @@ export class ResourceAmountSelector extends BaseComponent {
   }
 
   _renderAccountBalance(): HTMLTemplateResult {
-    return html`
-      <section class="balanceContent">
-        <span>${this.tokenBalance}</span>
-        <button class="maxButton">Max</button>
-      </section>
-    `;
+    if (this.tokenBalance && this.selectedResource) {
+      return html`
+        <section class="balanceContent">
+          <span
+            >${tokenBalanceToNumber(
+              this.tokenBalance,
+              this.selectedResource.decimals!,
+              4
+            )}</span
+          >
+          <button class="maxButton">Max</button>
+        </section>
+      `;
+    }
+
+    return html``;
   }
 
   _renderErrorMessages(): HTMLTemplateResult {
